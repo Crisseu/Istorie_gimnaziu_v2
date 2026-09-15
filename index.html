@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Istorie Gimnaziu - Interactive</title>
+    <link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Istorie">
+<link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #2b1d0c; display: flex; justify-content: center; min-height: 100vh; }
+        .app-container { width: 100%; max-width: 500px; background: #fdf6e2; min-height: 100vh; box-shadow: 0 0 25px rgba(0,0,0,0.6); display: flex; flex-direction: column; position: relative; }
+        
+        header { background: linear-gradient(135deg, #4a2e1b, #2c1d11); color: #f3e5ab; padding: 16px; text-align: center; font-size: 1.2rem; font-weight: bold; position: relative; border-bottom: 4px solid #d4a359; }
+        .back-btn { position: absolute; left: 12px; top: 12px; background: #8c5a2b; border: 1px solid #d4a359; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; display: none; }
+        
+        .player-bar { background: #3d2516; color: #f3e5ab; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; border-bottom: 2px solid #8c5a2b; }
+        .xp-bar-bg { width: 110px; background: #2c1d11; height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid #d4a359; margin-top: 3px; }
+        .xp-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); transition: width 0.4s ease; }
+
+        .screen { display: none; padding: 20px; flex-grow: 1; }
+        .active-screen { display: flex; flex-direction: column; }
+
+        .card { background: #fffdf7; border: 1px solid #d4a359; border-left: 6px solid #8c5a2b; padding: 18px; margin-bottom: 14px; border-radius: 10px; cursor: pointer; font-weight: bold; color: #4a2e1b; box-shadow: 0 4px 6px rgba(0,0,0,0.04); font-size: 1.05rem; transition: transform 0.1s ease; }
+        .card:active { transform: scale(0.98); }
+
+        .tabs { display: flex; border-bottom: 2px solid #d4a359; margin-bottom: 18px; background: #ebdcb9; border-radius: 8px 8px 0 0; overflow: hidden; }
+        .tab-btn { flex: 1; padding: 12px 5px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #5c3a21; font-size: 0.8rem; text-align: center; }
+        .tab-btn.active { background: #8c5a2b; color: white; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .summary-box { background: #ffffff; border: 1px solid #d4a359; padding: 18px; border-radius: 10px; line-height: 1.6; font-size: 1rem; color: #2c1d11; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .summary-box h3 { color: #c0392b; margin-top: 16px; border-bottom: 2px dashed #d4a359; padding-bottom: 4px; font-size: 1.15rem; }
+        .summary-box h3:first-child { margin-top: 0; }
+        .summary-box ul { margin-left: 20px; margin-top: 8px; }
+
+        .boxes-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+        .mystery-box { background: linear-gradient(135deg, #d4a359, #8c5a2b); color: white; height: 65px; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: bold; cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 3px 6px rgba(140, 90, 43, 0.3); }
+        .mystery-box.opened { background: #d3d3d3; color: #666; cursor: default; box-shadow: none; border: none; }
+
+        .game-overlay { background: #ffffff; border: 2px solid #8c5a2b; border-radius: 12px; padding: 18px; margin-top: 15px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .timer-bar-bg { height: 10px; background: #ebdcb9; width: 100%; border-radius: 5px; margin-bottom: 15px; overflow: hidden; }
+        .timer-bar { height: 100%; background: #e74c3c; width: 100%; transition: width 1s linear; }
+        .option-btn { width: 100%; padding: 12px; margin: 6px 0; border: 2px solid #d4a359; background: #fffdf7; border-radius: 8px; text-align: left; font-size: 1rem; cursor: pointer; line-height: 1.3; font-weight: 600; color: #4a2e1b; transition: all 0.2s; }
+        .option-btn.correct { background: #2ecc71 !important; border-color: #27ae60 !important; color: white !important; }
+        .option-btn.wrong { background: #e74c3c !important; border-color: #c0392b !important; color: white !important; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <button class="back-btn" id="backBtn" onclick="goBack()">&#8592;</button>
+        <span id="headerTitle">Istorie Gimnaziu</span>
+    </header>
+
+    <div class="player-bar">
+        <div><strong id="playerRank">Nivel 1: Mic Arheolog</strong></div>
+        <div>
+            <span>XP: <span id="xpText">0</span>/100</span>
+            <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpFill"></div></div>
+        </div>
+    </div>
+
+    <!-- Screen 1: Clase -->
+    <div id="screenClasses" class="screen active-screen">
+        <h3 style="margin-bottom: 14px; color: #4a2e1b;">Alege Clasa:</h3>
+        <div class="card" onclick="openClass('V')">📜 Clasa a V-a</div>
+        <div class="card" onclick="openClass('VI')">⚔️ Clasa a VI-a</div>
+        <div class="card" onclick="openClass('VII')">🏰 Clasa a VII-a</div>
+        <div class="card" onclick="openClass('VIII')">👑 Clasa a VIII-a</div>
+    </div>
+
+    <!-- Screen 2: Lista Lecții (Generată dinamic) -->
+    <div id="screenLessons" class="screen">
+        <h3 id="lessonsCategoryTitle" style="margin-bottom: 14px; color: #4a2e1b;">Lecții</h3>
+        <div id="lessonsListContainer"></div>
+    </div>
+
+    <!-- Screen 3: Detaliu Lecție (Rezumat, Quiz, Genially) -->
+    <div id="screenDetail" class="screen">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('summary')">📖 Rezumat</button>
+            <button class="tab-btn" onclick="switchTab('game')">🎁 Quiz</button>
+            <button class="tab-btn" onclick="switchTab('genially')">🌐 Wordwall / Genially</button>
+        </div>
+
+        <!-- TAB 1: REZUMAT -->
+        <div id="tabSummary" class="tab-content active">
+            <div id="summaryBoxContent" class="summary-box"></div>
+        </div>
+
+        <!-- TAB 2: QUIZ 8 CASETE -->
+        <div id="tabGame" class="tab-content">
+            <p style="font-size:0.9rem; color:#5c3a21; margin-bottom:10px; font-weight:bold;">Alege o casetă pentru a răspunde:</p>
+            <div id="boxesContainer" class="boxes-grid">
+                <div class="mystery-box" onclick="openBox(0, this)">1</div>
+                <div class="mystery-box" onclick="openBox(1, this)">2</div>
+                <div class="mystery-box" onclick="openBox(2, this)">3</div>
+                <div class="mystery-box" onclick="openBox(3, this)">4</div>
+                <div class="mystery-box" onclick="openBox(4, this)">5</div>
+                <div class="mystery-box" onclick="openBox(5, this)">6</div>
+                <div class="mystery-box" onclick="openBox(6, this)">7</div>
+                <div class="mystery-box" onclick="openBox(7, this)">8</div>
+            </div>
+
+            <div id="questionArea" class="game-overlay" style="display:none;">
+                <div class="timer-bar-bg"><div class="timer-bar" id="timerBar"></div></div>
+                <p id="qText" style="font-weight:bold; font-size: 1.05rem; color:#4a2e1b; margin-bottom:12px;"></p>
+                <div id="optionsBox"></div>
+            </div>
+        </div>
+
+       <!-- TAB 3: RESURSE EXTERNE -->
+        <div id="tabGenially" class="tab-content">
+            <p style="font-size:0.9rem; color:#5c3a21; margin-bottom:12px; font-weight:bold;">Resurse interactive externe:</p>
+            <div style="background: #fffdf7; border: 1px solid #d4a359; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
+                <p style="color: #c0392b; font-weight: bold; margin-bottom: 8px; font-size: 0.95rem;">1. Resursa 1</p>
+                <div style="width: 100%; position: relative; padding-bottom: 56.25%; height: 0;">
+                    <iframe id="iframeGame1" frameborder="0" width="100%" height="100%" style="position: absolute; left: 0; top: 0; border-radius: 6px;" src="" allowfullscreen="true"></iframe>
+                </div>
+            </div>
+            <div style="background: #fffdf7; border: 1px solid #d4a359; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
+                <p style="color: #c0392b; font-weight: bold; margin-bottom: 8px; font-size: 0.95rem;">2. Resursa 2</p>
+                <div style="width: 100%; position: relative; padding-bottom: 56.25%; height: 0;">
+                    <iframe id="iframeGame2" frameborder="0" width="100%" height="100%" style="position: absolute; left: 0; top: 0; border-radius: 6px;" src="" allowfullscreen="true"></iframe>
+                </div>
+            </div>
+            <div style="background: #fffdf7; border: 1px solid #d4a359; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
+                <p style="color: #c0392b; font-weight: bold; margin-bottom: 8px; font-size: 0.95rem;">3. Resursa 3</p>
+                <div style="width: 100%; position: relative; padding-bottom: 56.25%; height: 0;">
+                    <iframe id="iframeGame3" frameborder="0" width="100%" height="100%" style="position: absolute; left: 0; top: 0; border-radius: 6px;" src="" allowfullscreen="true"></iframe>
+                </div>
+            </div>
+        </div>
+
+<!-- Aici încărcăm fișierul separat cu lecții -->
+<script src="lectii.js"></script>
+<script>
+    let xp = parseInt(localStorage.getItem('userXP')) || 0;
+    let timerInterval = null;
+    let timeLeft = 30;
+    let currentCorrectIndex = null;
+    let currentLessonData = null;
+    let currentClassKey = 'V'; // Variabilă nouă pentru clasa curentă
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        if (type === 'correct') {
+            const notes = [523.25, 659.25, 783.99]; 
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, audioCtx.currentTime + index * 0.08);
+                gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + index * 0.08 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + index * 0.08 + 0.3);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + index * 0.08);
+                osc.stop(audioCtx.currentTime + index * 0.08 + 0.3);
+            });
+        } else if (type === 'wrong') {
+            const notes = [261.63, 220.00];
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, audioCtx.currentTime + index * 0.1);
+                gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + index * 0.1 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + index * 0.1 + 0.25);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + index * 0.1);
+                osc.stop(audioCtx.currentTime + index * 0.1 + 0.25);
+            });
+        } else if (type === 'tick') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        }
+    }
+
+    function updateXP(val) {
+        xp += val;
+        localStorage.setItem('userXP', xp);
+        document.getElementById('xpText').innerText = xp;
+        let fill = (xp % 100);
+        document.getElementById('xpFill').style.width = fill + '%';
+        
+        let level = Math.floor(xp / 100) + 1;
+        let rank = "Nivel " + level + ": ";
+        if(level === 1) rank += "Mic Arheolog";
+        else if(level === 2) rank += "Explorator de Istorie";
+        else rank += "Maestru Cronicar";
+        
+        document.getElementById('playerRank').innerText = rank;
+    }
+    updateXP(0);
+
+    function openClass(clsKey) {
+        currentClassKey = clsKey; // Salvăm clasa curentă
+        document.getElementById('headerTitle').innerText = "Clasa a " + clsKey + "-a";
+        document.getElementById('screenClasses').classList.remove('active-screen');
+        document.getElementById('screenLessons').classList.add('active-screen');
+        document.getElementById('backBtn').style.display = 'block';
+
+        const container = document.getElementById('lessonsListContainer');
+        container.innerHTML = '';
+        
+        const lessons = dbLectii[clsKey] || [];
+        lessons.forEach((les, idx) => {
+            container.innerHTML += `<div class="card" onclick="openLessonDetail('${clsKey}', ${idx})">${les.title}</div>`;
+        });
+    }
+
+    function openLessonDetail(clsKey, lessonIdx) {
+        currentLessonData = dbLectii[clsKey][lessonIdx];
+        document.getElementById('headerTitle').innerText = currentLessonData.title;
+        document.getElementById('screenLessons').classList.remove('active-screen');
+        document.getElementById('screenDetail').classList.add('active-screen');
+
+        document.getElementById('summaryBoxContent').innerHTML = currentLessonData.summary;
+        document.getElementById('iframeGame1').src = currentLessonData.game1 || "";
+        document.getElementById('iframeGame2').src = currentLessonData.game2 || "";
+        document.getElementById('iframeGame3').src = currentLessonData.game3 || "";
+
+        // Reset casete quiz
+        document.getElementById('questionArea').style.display = 'none';
+        const boxes = document.querySelectorAll('.mystery-box');
+        boxes.forEach((b, i) => {
+            b.classList.remove('opened');
+            b.innerText = i + 1;
+        });
+    }
+
+   function goBack() {
+        clearInterval(timerInterval);
+        const detail = document.getElementById('screenDetail');
+        const lessons = document.getElementById('screenLessons');
+        
+        if(detail.classList.contains('active-screen')) {
+            detail.classList.remove('active-screen');
+            lessons.classList.add('active-screen');
+            document.getElementById('headerTitle').innerText = "Clasa a " + currentClassKey + "-a";
+        } else {
+            lessons.classList.remove('active-screen');
+            document.getElementById('screenClasses').classList.add('active-screen');
+            document.getElementById('headerTitle').innerText = "Istorie Gimnaziu";
+            document.getElementById('backBtn').style.display = 'none';
+        }
+    }
+
+    function switchTab(t) {
+        const btns = document.querySelectorAll('.tab-btn');
+        const contents = document.querySelectorAll('.tab-content');
+        btns.forEach(b => b.classList.remove('active'));
+        contents.forEach(c => c.classList.remove('active'));
+
+        if(t === 'summary') { 
+            btns[0].classList.add('active'); 
+            document.getElementById('tabSummary').classList.add('active'); 
+        }
+        else if(t === 'game') { 
+            btns[1].classList.add('active'); 
+            document.getElementById('tabGame').classList.add('active'); 
+        }
+        else { 
+            btns[2].classList.add('active'); 
+            document.getElementById('tabGenially').classList.add('active'); 
+            
+            // TRUCUL PENTRU WORDWALL: Reîncarcă automat iframe-urile la deschiderea tab-ului
+            if(currentLessonData) {
+                document.getElementById('iframeGame1').src = currentLessonData.game1 || "";
+                document.getElementById('iframeGame2').src = currentLessonData.game2 || "";
+                document.getElementById('iframeGame3').src = currentLessonData.game3 || "";
+            }
+        }
+    }
+
+    function openBox(index, el) {
+        if(el.classList.contains('opened')) return;
+        el.classList.add('opened');
+        el.innerText = '✔️';
+        
+        const qArea = document.getElementById('questionArea');
+        qArea.style.display = 'block';
+        
+        const data = currentLessonData.quiz[index];
+        currentCorrectIndex = data.c;
+        document.getElementById('qText').innerText = data.q;
+        const optsBox = document.getElementById('optionsBox');
+        optsBox.innerHTML = '';
+
+        data.opts.forEach((opt, i) => {
+            optsBox.innerHTML += `<button class="option-btn" data-index="${i}" onclick="answer(${i === data.c}, this)">${opt}</button>`;
+        });
+
+        startTimer();
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timeLeft = 30;
+        const bar = document.getElementById('timerBar');
+        bar.style.width = '100%';
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            bar.style.width = Math.max(0, (timeLeft / 30 * 100)) + '%';
+            if (timeLeft <= 5 && timeLeft > 0) { playSound('tick'); }
+            if(timeLeft <= 0) { clearInterval(timerInterval); }
+        }, 1000);
+    }
+
+    function answer(isCorrect, btn) {
+        clearInterval(timerInterval);
+        document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+        
+        if(isCorrect) {
+            btn.classList.add('correct');
+            playSound('correct');
+            updateXP(25);
+        } else {
+            btn.classList.add('wrong');
+            playSound('wrong');
+            document.querySelectorAll('.option-btn')[currentCorrectIndex].classList.add('correct');
+        }
+    }
+</script>
+
+</body>
+</html>
